@@ -1,43 +1,101 @@
 "use client";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
 import { logout } from "@/lib/auth";
+
+// Components
 import TaskCard from "@/components/tasks/TaskCard";
 import TaskForm from "@/components/tasks/TaskForm";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import TaskFilters from "@/components/tasks/TaskFilters";
 
 export default function Home() {
-  const { user, loading: authLoading } = useAuth();
-  const { tasks, loading: tasksLoading, addTask, toggleTask, removeTask } = useTasks(user?.uid);
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+  
+  // Pass the real logged-in user's ID to the hook
+  const { 
+    tasks, 
+    filter, 
+    setFilter, 
+    loading: tasksLoading, 
+    addTask, 
+    toggleTask, 
+    removeTask 
+  } = useTasks(user?.uid);
 
+  // PROTECT ROUTE: If not logged in, send to login page
   useEffect(() => {
     if (!authLoading && !user) {
       router.push("/login");
     }
   }, [user, authLoading, router]);
 
-  if (authLoading) return <div className="text-center p-20">Checking authentication...</div>;
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-gray-500 animate-pulse">Verifying session...</p>
+      </div>
+    );
+  }
+
   if (!user) return null;
 
   return (
-    <main className="max-w-2xl mx-auto p-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">My Tasks</h1>
-        <button onClick={logout} className="text-sm text-red-500 hover:underline">Logout</button>
-      </div>
-      
-      <TaskForm onAdd={addTask} />
+    <main className="min-h-screen bg-gray-50 py-12 px-4">
+      <div className="max-w-2xl mx-auto">
+        {/* Header Area */}
+        <div className="flex justify-between items-center mb-10">
+          <div>
+            <h1 className="text-3xl font-extrabold text-gray-900">Task Manager</h1>
+            <p className="text-sm text-gray-500">Logged in as {user.email}</p>
+          </div>
+          <button 
+            onClick={logout}
+            className="text-sm font-medium text-red-600 hover:text-red-700 bg-red-50 px-4 py-2 rounded-lg transition"
+          >
+            Sign Out
+          </button>
+        </div>
 
-      <div className="mt-8 space-y-4">
-        {tasksLoading ? (
-          <p className="text-center text-gray-500">Loading tasks...</p>
-        ) : (
-          tasks.map(task => (
-            <TaskCard key={task.id} task={task} onToggle={toggleTask} onDelete={removeTask} />
-          ))
-        )}
+        {/* Input Area */}
+        <section className="mb-10">
+          <TaskForm onAdd={addTask} />
+        </section>
+
+        {/* Filter Area */}
+        <TaskFilters 
+          currentFilter={filter} 
+          onFilterChange={setFilter} 
+        />
+
+        {/* Tasks List Area */}
+        <div className="space-y-3">
+          {tasksLoading ? (
+            <div className="text-center py-10 text-gray-400">Loading tasks...</div>
+          ) : tasks.length === 0 ? (
+            <div className="text-center py-10 bg-white border border-dashed rounded-xl">
+              <p className="text-gray-400">No {filter !== 'all' ? filter : ''} tasks found.</p>
+            </div>
+          ) : (
+            tasks.map((task) => (
+              <TaskCard 
+                key={task.id} 
+                task={task} 
+                onToggle={toggleTask} 
+                onDelete={removeTask} 
+              />
+            ))
+          )}
+        </div>
+
+        {/* Footer Stats */}
+        <div className="mt-8 pt-6 border-t text-center">
+          <p className="text-xs text-gray-400 uppercase tracking-widest font-semibold">
+             Built with Next.js + Firebase
+          </p>
+        </div>
       </div>
     </main>
   );
